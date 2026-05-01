@@ -1,0 +1,30 @@
+# SignSync – Python dependencies
+# Install with: pip install -r requirements.txt
+
+# ── Core UI ───────────────────────────────────────────────
+streamlit>=1.32.0
+
+# ── Speech Recognition ────────────────────────────────────
+openai-whisper>=20231117       # AI speech-to-text
+# Whisper also needs: ffmpeg (system package, see README)
+
+# ── NLP ───────────────────────────────────────────────────
+spacy>=3.7.0                   # Text processing
+# After install run: python -m spacy download en_core_web_sm
+nltk                           # Natural Language Toolkit
+
+# ── Video Processing ──────────────────────────────────────
+moviepy>=1.0.3                 # ISL video assembly
+opencv-python-headless>=4.9.0  # Frame manipulation
+imageio[ffmpeg]>=2.34.0        # Fallback video writer
+
+# ── Audio ─────────────────────────────────────────────────
+ffmpeg-python>=0.2.0         # optional Python wrapper (ffmpeg binary required)
+
+# ── YouTube Download (optional) ───────────────────────────
+yt-dlp>=2024.3.10
+
+# ── Utilities ─────────────────────────────────────────────
+Pillow>=10.0.0                 # Image manipulation
+numpy>=1.26.0
+torch>=2.1.0                   # Required by Whisper (CPU version works fine)
