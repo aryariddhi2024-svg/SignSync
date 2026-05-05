@@ -1,7 +1,5 @@
 """
 SignSync – AI-Based Video to Indian Sign Language Converter
-Author : Riddhi Arya | MCA IV-C | UU2420000094
-Mentor : Mr. Nitin Sharma | USCS, Uttaranchal University
 """
 
 import streamlit as st
@@ -28,7 +26,10 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
-html, body, [class*="css"] { font-family: 'Space Grotesk', sans-serif; }
+html, body, [class*="css"] { font-family: 'Space Grotesk', sans-serif; color: #ffffff !important; }
+*, input, textarea, button, select, label, p, span, div, a, small, strong, li { color: #ffffff !important; }
+h1, h2, h3, h4, h5, h6 { color: #ffffff !important; }
+[data-testid="stSidebar"] label p { color: #ffffff !important; }
 
 .stApp { background: #0f1117; }
 
@@ -83,6 +84,16 @@ div[data-testid="stButton"] > button {
     transition: all .2s;
 }
 div[data-testid="stButton"] > button:hover { filter:brightness(1.15); }
+
+[data-testid="stFileUploader"] div[role="button"] {
+    background: #000000 !important;
+    color: #ffffff !important;
+    border: 1px solid #333333 !important;
+}
+
+[data-testid="stFileUploader"] label {
+    color: #ffffff !important;
+}
 
 .transcript-box {
     background:#0f1117; border:1px solid rgba(124,106,247,0.3);
@@ -324,7 +335,7 @@ def _show_results(results, orig_video):
 # ── DASHBOARD ─────────────────────────────────────────────────────────────────
 if page == "🏠 Dashboard":
     st.title("🤟 SignSync")
-    st.caption("AI-Powered Indian Sign Language Converter — MCA Project, USCS Uttaranchal University")
+    st.caption("AI-Powered Indian Sign Language Converter")
     st.markdown("---")
 
     c1, c2, c3, c4 = st.columns(4)
@@ -385,19 +396,43 @@ elif page == "🔗 Video Link":
     st.markdown("---")
 
     url = st.text_input("Paste video URL", placeholder="https://youtube.com/watch?v=…")
+    use_cookies = st.checkbox("Use Chrome browser cookies automatically", help="Automatically use cookies from Chrome if logged in to YouTube. Make sure Chrome is closed.")
+    
+    with st.expander("🔐 Manual Authentication (Advanced)"):
+        st.markdown("If automatic cookies don't work, upload a cookies.txt file:")
+        cookie_file = st.file_uploader("Upload cookies.txt", type=["txt"])
+        st.caption("Export cookies from your browser while logged into YouTube")
 
-    if url and st.button("🚀 Convert to ISL", use_container_width=True):
+    if url and url != "https://youtube.com/watch?v=…" and st.button("🚀 Convert to ISL", use_container_width=True):
+        # Basic URL validation
+        if not (url.startswith("http://") or url.startswith("https://")):
+            st.error("Please enter a valid URL starting with http:// or https://")
+            st.stop()
+        
         with st.spinner("Downloading video…"):
             try:
                 import yt_dlp
                 tmp_dir  = tempfile.mkdtemp()
                 out_tmpl = os.path.join(tmp_dir, "%(title)s.%(ext)s")
                 ydl_opts = {
-                    "format": "bestvideo[ext=mp4][height<=720]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+                    "format": "bestvideo+bestaudio/best",
                     "outtmpl": out_tmpl,
                     "quiet": True,
                     "merge_output_format": "mp4",
+                    "retries": 10,
+                    "fragment_retries": 10,
+                    "extractor_retries": 3,
+                    "nocheckcertificate": True,
+                    "source_address": "0.0.0.0",
                 }
+
+                if use_cookies:
+                    ydl_opts["cookiesfrombrowser"] = "chrome"
+                elif cookie_file is not None:
+                    cookie_path = os.path.join(tmp_dir, "cookies.txt")
+                    with open(cookie_path, "wb") as f:
+                        f.write(cookie_file.read())
+                    ydl_opts["cookiefile"] = cookie_path
 
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                     info     = ydl.extract_info(url, download=True)

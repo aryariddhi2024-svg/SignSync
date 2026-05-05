@@ -1,8 +1,5 @@
 # 🤟 SignSync – AI-Based Video to Indian Sign Language Converter
 
-**MCA Final Year Project | USCS, Uttaranchal University | Session 2025-26**
-**Student:** Riddhi Arya (UU2420000094) | **Mentor:** Mr. Nitin Sharma
-
 ---
 
 ## 📌 Project Overview
@@ -199,4 +196,4 @@ User uploads video / pastes URL
 
 ## 📄 License
 
-Academic project – USCS, Uttaranchal University. Not for commercial use.
+Academic project. Not for commercial use.
