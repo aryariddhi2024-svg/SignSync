@@ -274,12 +274,12 @@ def _show_results(results, orig_video):
     st.markdown("### 🎬 Results")
 
     c1, c2, c3, c4 = st.columns(4)
-    word_count  = len(results["tokens"])
+    token_count = len(results["tokens"])
     mapped_cnt  = len(results["mapped"])
     miss_cnt    = len(results["missing"])
-    coverage    = round(mapped_cnt / word_count * 100) if word_count else 0
+    coverage    = round(mapped_cnt / token_count * 100) if token_count else 0
 
-    c1.markdown(f'<div class="stat-box"><div class="stat-val">{word_count}</div><div class="stat-label">Words Detected</div></div>', unsafe_allow_html=True)
+    c1.markdown(f'<div class="stat-box"><div class="stat-val">{token_count}</div><div class="stat-label">Letters Detected</div></div>', unsafe_allow_html=True)
     c2.markdown(f'<div class="stat-box"><div class="stat-val" style="color:#34d399">{mapped_cnt}</div><div class="stat-label">ISL Signs Mapped</div></div>', unsafe_allow_html=True)
     c3.markdown(f'<div class="stat-box"><div class="stat-val" style="color:#fbbf24">{miss_cnt}</div><div class="stat-label">Fingerspelled</div></div>', unsafe_allow_html=True)
     c4.markdown(f'<div class="stat-box"><div class="stat-val">{coverage}%</div><div class="stat-label">Dictionary Coverage</div></div>', unsafe_allow_html=True)
@@ -317,7 +317,7 @@ def _show_results(results, orig_video):
         st.markdown(chips)
 
     if results.get("missing"):
-        st.markdown("**Words not in dataset:**")
+        st.markdown("**Tokens not in dataset:**")
         st.markdown(" ".join(f"`{w}`" for w in results["missing"]))
 
     # Debug expander
