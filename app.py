@@ -38,6 +38,22 @@ section[data-testid="stSidebar"] {
     border-right: 1px solid rgba(255,255,255,0.07);
 }
 
+input, textarea, select, [role="textbox"], div[role="combobox"], .stTextInput>div>div>input, .stTextInput>div>div>textarea {
+    background: #0f1117 !important;
+    color: #ffffff !important;
+    border-color: rgba(255,255,255,0.12) !important;
+}
+
+[data-testid="stFileUploader"] div[role="button"] {
+    background: #000000 !important;
+    color: #ffffff !important;
+    border: 1px solid #333333 !important;
+}
+
+[data-testid="stFileUploader"] label {
+    color: #ffffff !important;
+}
+
 .brand-box {
     background: linear-gradient(135deg,#7c6af7,#a78bfa);
     border-radius:12px; padding:16px 20px; margin-bottom:20px;
@@ -124,7 +140,7 @@ with st.sidebar:
 
     page = st.radio(
         "Navigate",
-        ["🏠 Dashboard", "📤 Upload Video", "🔗 Video Link", "⏱ History", "⚙ Preferences", "❓ Help"],
+        ["🏠 Dashboard", "📤 Upload Video", "🔗 Video Link", "⏱ History"],
         label_visibility="collapsed",
     )
 
@@ -271,21 +287,7 @@ def _mark(placeholders, idx, state, icon, step_data):
 
 def _show_results(results, orig_video):
     st.markdown("---")
-    st.markdown("### 🎬 Results")
-
-    c1, c2, c3, c4 = st.columns(4)
-    token_count = len(results["tokens"])
-    mapped_cnt  = len(results["mapped"])
-    miss_cnt    = len(results["missing"])
-    coverage    = round(mapped_cnt / token_count * 100) if token_count else 0
-
-    c1.markdown(f'<div class="stat-box"><div class="stat-val">{token_count}</div><div class="stat-label">Letters Detected</div></div>', unsafe_allow_html=True)
-    c2.markdown(f'<div class="stat-box"><div class="stat-val" style="color:#34d399">{mapped_cnt}</div><div class="stat-label">ISL Signs Mapped</div></div>', unsafe_allow_html=True)
-    c3.markdown(f'<div class="stat-box"><div class="stat-val" style="color:#fbbf24">{miss_cnt}</div><div class="stat-label">Fingerspelled</div></div>', unsafe_allow_html=True)
-    c4.markdown(f'<div class="stat-box"><div class="stat-val">{coverage}%</div><div class="stat-label">Dictionary Coverage</div></div>', unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.markdown("#### Side-by-Side Comparison")
+    st.markdown("#### 🎬 Side-by-Side Comparison")
 
     col_src, col_isl = st.columns(2)
 
@@ -306,26 +308,7 @@ def _show_results(results, orig_video):
                     mime="video/mp4"
                 )
         else:
-            st.warning("ISL video not generated. See debug info below.")
-
-    # Token summary
-    st.markdown("#### ISL Signs Used")
-    if results.get("mapped"):
-        chips = " ".join(
-            f"`{token}`" for token, _ in results["mapped"]
-        )
-        st.markdown(chips)
-
-    if results.get("missing"):
-        st.markdown("**Tokens not in dataset:**")
-        st.markdown(" ".join(f"`{w}`" for w in results["missing"]))
-
-    # Debug expander
-    with st.expander("Debug: pipeline details"):
-        st.write("Tokens from NLP:", results.get("tokens", []))
-        st.write("Mapped (token, image_path):", results.get("mapped", []))
-        st.write("Missing tokens:", results.get("missing", []))
-        st.write("ISL video path:", results.get("isl_video"))
+            st.warning("ISL video not generated. Check terminal for details.")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -396,57 +379,139 @@ elif page == "🔗 Video Link":
     st.markdown("---")
 
     url = st.text_input("Paste video URL", placeholder="https://youtube.com/watch?v=…")
-    use_cookies = st.checkbox("Use Chrome browser cookies automatically", help="Automatically use cookies from Chrome if logged in to YouTube. Make sure Chrome is closed.")
-    
+
+    use_cookies = st.checkbox(
+        "Use Chrome browser cookies automatically",
+        value=False,
+        help="⚠️ Requires Chrome to be fully closed. Fails on newer yt-dlp versions on Windows. Use cookies.txt upload below instead if this fails."
+    )
+
     with st.expander("🔐 Manual Authentication (Advanced)"):
-        st.markdown("If automatic cookies don't work, upload a cookies.txt file:")
+        st.markdown("""
+        **Recommended method:** Upload a `cookies.txt` file exported from your browser.
+        1. Install the **[Get cookies.txt LOCALLY](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)** Chrome extension
+        2. Log in to YouTube in Chrome
+        3. Go to the YouTube video page, click the extension → **Export**
+        4. Upload the saved file below
+        """)
         cookie_file = st.file_uploader("Upload cookies.txt", type=["txt"])
-        st.caption("Export cookies from your browser while logged into YouTube")
 
     if url and url != "https://youtube.com/watch?v=…" and st.button("🚀 Convert to ISL", use_container_width=True):
         # Basic URL validation
         if not (url.startswith("http://") or url.startswith("https://")):
             st.error("Please enter a valid URL starting with http:// or https://")
             st.stop()
-        
+
         with st.spinner("Downloading video…"):
             try:
                 import yt_dlp
                 tmp_dir  = tempfile.mkdtemp()
                 out_tmpl = os.path.join(tmp_dir, "%(title)s.%(ext)s")
-                ydl_opts = {
-                    "format": "bestvideo+bestaudio/best",
+
+                base_opts = {
+                    "format": "best",
                     "outtmpl": out_tmpl,
                     "quiet": True,
                     "merge_output_format": "mp4",
-                    "retries": 10,
-                    "fragment_retries": 10,
-                    "extractor_retries": 3,
+                    "retries": 5,
+                    "fragment_retries": 5,
                     "nocheckcertificate": True,
-                    "source_address": "0.0.0.0",
+                    "socket_timeout": 30,
+                    # Spoof a normal browser UA to avoid bot detection
+                    "http_headers": {
+                        "User-Agent": (
+                            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                            "AppleWebKit/537.36 (KHTML, like Gecko) "
+                            "Chrome/124.0.0.0 Safari/537.36"
+                        )
+                    },
                 }
 
-                if use_cookies:
-                    ydl_opts["cookiesfrombrowser"] = "chrome"
-                elif cookie_file is not None:
+                # ── Apply auth ────────────────────────────────────────────
+                if cookie_file is not None:
                     cookie_path = os.path.join(tmp_dir, "cookies.txt")
                     with open(cookie_path, "wb") as f:
                         f.write(cookie_file.read())
-                    ydl_opts["cookiefile"] = cookie_path
+                    base_opts["cookiefile"] = cookie_path
+                    st.info("🍪 Using uploaded cookies.txt for authentication.")
+                elif use_cookies:
+                    # Try automatic cookie extraction – may fail on Windows
+                    base_opts["cookiesfrombrowser"] = ("chrome",)
+                    st.info("🍪 Attempting automatic Chrome cookie extraction…")
 
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    info     = ydl.extract_info(url, download=True)
-                    vid_path = ydl.prepare_filename(info).replace(".webm", ".mp4").replace(".mkv", ".mp4")
+                info, vid_path = None, None
 
-                if os.path.exists(vid_path):
-                    st.success(f"✅ Downloaded: **{info.get('title','video')}**")
+                # ── Attempt download ──────────────────────────────────────
+                try:
+                    with yt_dlp.YoutubeDL(base_opts) as ydl:
+                        info = ydl.extract_info(url, download=True)
+                        vid_path = ydl.prepare_filename(info)
+                        # Normalise extension
+                        for ext in (".webm", ".mkv"):
+                            if vid_path.endswith(ext):
+                                vid_path = vid_path[:-len(ext)] + ".mp4"
+                except Exception as inner_err:
+                    inner_msg = str(inner_err)
+                    cookie_related = any(k in inner_msg for k in [
+                        "_parse_browser_specification", "cookiesfrombrowser",
+                        "browser-cookie3", "Automatic browser cookie",
+                        "Could not find a suitable browser profile",
+                    ])
+                    if cookie_related and use_cookies:
+                        # Cookie extraction failed → retry without cookies
+                        st.warning(
+                            "⚠️ Automatic cookie extraction failed (Chrome must be fully closed on Windows). "
+                            "Retrying without cookies…"
+                        )
+                        fallback_opts = {k: v for k, v in base_opts.items() if k != "cookiesfrombrowser"}
+                        with yt_dlp.YoutubeDL(fallback_opts) as ydl:
+                            info = ydl.extract_info(url, download=True)
+                            vid_path = ydl.prepare_filename(info)
+                            for ext in (".webm", ".mkv"):
+                                if vid_path.endswith(ext):
+                                    vid_path = vid_path[:-len(ext)] + ".mp4"
+                    else:
+                        raise
+
+                if vid_path and os.path.exists(vid_path):
+                    st.success(f"✅ Downloaded: **{info.get('title', 'video')}**")
                     run_pipeline(vid_path, url)
                 else:
-                    st.error("Download failed – file not found.")
+                    st.error(
+                        "❌ Download completed but output file not found. "
+                        "This can happen with some video formats — try a different URL."
+                    )
+
             except ImportError:
                 st.error("yt-dlp not installed. Run: `pip install yt-dlp`")
             except Exception as e:
-                st.error(f"Download error: {e}")
+                err_msg = str(e)
+                cookie_hint = any(k in err_msg for k in [
+                    "_parse_browser_specification", "cookiesfrombrowser",
+                    "browser-cookie3", "browser cookie",
+                ])
+                age_restricted = "age" in err_msg.lower() or "sign in" in err_msg.lower()
+                bot_detected   = "bot" in err_msg.lower() or "429" in err_msg or "blocked" in err_msg.lower()
+
+                if cookie_hint:
+                    st.error(
+                        "❌ **Cookie extraction failed.**\n\n"
+                        "**Fix:** Close Chrome completely, then try again — OR use the "
+                        "**Manual Authentication** section above to upload a `cookies.txt` file."
+                    )
+                elif age_restricted:
+                    st.error(
+                        "❌ **Age-restricted or sign-in required video.**\n\n"
+                        "Export your YouTube cookies and upload via **Manual Authentication** above."
+                    )
+                elif bot_detected:
+                    st.error(
+                        "❌ **YouTube blocked the download (bot detection / rate limit).**\n\n"
+                        "Try: upload `cookies.txt` from a logged-in YouTube session, or try a "
+                        "different/public video."
+                    )
+                else:
+                    st.error(f"❌ Download error: {e}")
 
 # ── HISTORY ───────────────────────────────────────────────────────────────────
 elif page == "⏱ History":
@@ -459,129 +524,8 @@ elif page == "⏱ History":
         for i, h in enumerate(reversed(st.session_state.history)):
             with st.expander(f"#{len(st.session_state.history)-i} · {h['source']} · {h['time']}"):
                 st.markdown(f"**Transcript:** {h['transcript'][:200]}…")
-                st.markdown(f"**Tokens:** {len(h['tokens'])} · **Mapped:** {len(h['mapped'])} · **Missing:** {len(h['missing'])}")
                 if h["isl_video"] and os.path.exists(h["isl_video"]):
                     st.video(h["isl_video"])
                     with open(h["isl_video"], "rb") as f:
                         st.download_button(f"⬇ Download ISL #{i+1}", f, file_name=f"isl_{i+1}.mp4")
 
-# ── PREFERENCES ───────────────────────────────────────────────────────────────
-elif page == "⚙ Preferences":
-    st.title("⚙ Preferences")
-    st.markdown("---")
-
-    with st.form("prefs_form"):
-        st.subheader("🎙 Speech Recognition")
-        model = st.selectbox(
-            "Whisper Model",
-            ["tiny", "base", "small", "medium", "large"],
-            index=["tiny","base","small","medium","large"].index(st.session_state.prefs["model"]),
-            help="Larger = more accurate but slower. 'base' is recommended for most systems.",
-        )
-        lang = st.selectbox("Input Language", ["en", "hi", "auto"], index=0,
-                            help="'auto' lets Whisper detect the language.")
-        noise = st.toggle("Noise Reduction (pre-process audio)", value=st.session_state.prefs["noise_reduction"])
-
-        st.subheader("🤟 ISL Generation")
-        speed = st.slider("Signing Speed (fps multiplier)", 0.5, 2.0,
-                          st.session_state.prefs["signing_speed"], 0.1)
-        fingerspell = st.toggle("Fingerspell unknown words", value=st.session_state.prefs["show_fingerspell"])
-
-        if st.form_submit_button("💾 Save Preferences"):
-            st.session_state.prefs.update({
-                "model": model, "language": lang,
-                "noise_reduction": noise,
-                "signing_speed": speed,
-                "show_fingerspell": fingerspell,
-            })
-            st.success("✅ Preferences saved!")
-
-# ── HELP ──────────────────────────────────────────────────────────────────────
-elif page == "❓ Help":
-    st.title("❓ Help & Documentation")
-    st.markdown("---")
-
-    with st.expander("📦 Installation & Setup"):
-        st.code("""# 1. Clone / download the project
-cd signsync
-
-# 2. Install Python dependencies
-pip install -r requirements.txt
-
-# 3. Install system tools
-# Ubuntu/Debian:
-sudo apt install ffmpeg
-# macOS:
-brew install ffmpeg
-
-# 4. Download spaCy model
-python -m spacy download en_core_web_sm
-
-# 5. Run the app
-streamlit run app.py""", language="bash")
-
-    with st.expander("📁 Dataset Structure"):
-        st.markdown("""
-The ISL gesture dataset lives in `isl_dataset/`. Each word has its own folder containing
-short MP4 clips of the sign:
-
-```
-isl_dataset/
-├── hello/         → hello_1.mp4, hello_2.mp4
-├── thank_you/     → thank_you_1.mp4
-├── india/         → india_1.mp4
-├── good/          → good_1.mp4
-├── alphabet/
-│   ├── a/         → a_1.mp4
-│   ├── b/         → b_1.mp4
-│   └── ...
-└── ...
-```
-
-**Free ISL datasets:**
-- [INCLUDE-50 (IIT Bombay)](https://zenodo.org/record/4010759) – 50 common ISL signs
-- [ISLRTC Dataset](https://islrtc.nic.in) – Government of India sign library
-- [Sign Language MNIST](https://www.kaggle.com/datamunge/sign-language-mnist) – alphabet images
-- Record your own gestures using a webcam at 30fps, 640×480, saved as MP4.
-""")
-
-    with st.expander("🔧 Tools & Technologies"):
-        st.table({
-            "Tool": ["Python 3.9+", "Streamlit", "OpenAI Whisper", "FFmpeg", "spaCy", "MoviePy", "yt-dlp"],
-            "Purpose": ["Core language", "Web UI", "Speech-to-text", "Audio/video processing",
-                        "NLP tokenisation", "ISL video assembly", "YouTube download"],
-            "Install": ["—", "pip install streamlit", "pip install openai-whisper",
-                        "System package", "pip install spacy", "pip install moviepy", "pip install yt-dlp"],
-        })
-
-    with st.expander("🔗 YouTube Cookies Setup"):
-        st.markdown("""
-To download YouTube videos that require login or block bots:
-
-### Option 1: Export cookies from browser
-1. Install the [Get cookies.txt](https://chrome.google.com/webstore/detail/get-cookiestxt/bgaddhkoddajcdgocldbbfleckgcbcid) Chrome extension
-2. Log in to YouTube in Chrome
-3. Visit the YouTube video page
-4. Click the extension icon → "Export as cookies.txt"
-5. Save the file as `cookies.txt`
-6. Upload it in the Video Link page
-
-### Option 2: Use a direct video URL
-Instead of YouTube, upload a direct MP4/MP4 link if available.
-
-### Option 3: Use public videos
-Try videos that don't require login (e.g., public educational content).
-""")
-
-    with st.expander("❓ Common Errors"):
-        st.markdown("""
-| Error | Cause | Fix |
-|---|---|---|
-| No speech detected | Silent/music-only video | Use video with clear dialogue |
-| FFmpeg not found | FFmpeg not installed | `sudo apt install ffmpeg` |
-| CUDA out of memory | GPU too small | Set model to `tiny` or `base` |
-| Word not in ISL dict | New/rare word | Enable fingerspelling in Preferences |
-| yt-dlp download fails | Private/geo-blocked | Use a public video |
-""")
-
-    st.markdown("---")

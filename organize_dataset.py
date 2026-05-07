@@ -233,7 +233,7 @@ def main():
 
         if n > 0:
             dest = ("alphabet/" + label if is_single_letter(label) else label)
-            print(f"  ✅  {raw_name:20s} → isl_dataset/{dest}/")
+            print(f"  ✅  {raw_name:20s} -> isl_dataset/{dest}/")
         else:
             skipped.append(raw_name)
 

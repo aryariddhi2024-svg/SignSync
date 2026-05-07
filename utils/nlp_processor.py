@@ -38,7 +38,7 @@ def process_text(transcript: str) -> list[str]:
             continue
         if len(text) == 1 and text.isalpha():
             tokens.append(text)
-        elif not token.is_stop and not token.is_punct and not token.is_space:
+        elif not token.is_punct and not token.is_space:
             tokens.append(token.lemma_.lower())
     print("[nlp_processor] Processed tokens:", tokens)
     return tokens

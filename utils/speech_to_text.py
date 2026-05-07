@@ -22,7 +22,10 @@ def transcribe_audio(
 
         model = whisper.load_model(model_size)
 
-        options = {}
+        options = {
+            "condition_on_previous_text": False,
+            "fp16": False,
+        }
         if language and language != "auto":
             options["language"] = language
 
