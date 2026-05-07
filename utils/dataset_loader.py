@@ -1,44 +1,44 @@
 import os
 from pathlib import Path
 
-# Root of the ISL image archive folder.
-# Change this path to wherever your archive folder is located.
-ARCHIVE_DIR = Path(r"C:\Users\Lenovo\Downloads\archive")
+# Use the 'isl_dataset' folder located in the project root
+ARCHIVE_DIR = Path(__file__).parent.parent / "isl_dataset"
 
-SUPPORTED_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+SUPPORTED_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".webp", ".mp4"}
 
 def load_isl_dataset() -> dict[str, str]:
     """
-    Scans the archive folder and returns a dict:
-      { "word_or_letter": "/absolute/path/to/image.jpg", ... }
-
-    Rules:
-    - Filename without extension is used as the key (lowercased).
-    - e.g.  archive/Hello.jpg  →  key: "hello"
-    - e.g.  archive/A.png      →  key: "a"
-    - Subfolders are also scanned recursively.
-    - If multiple images exist for the same key, the first one found is used.
+    Scans the isl_dataset folder and returns a dict:
+      { "word_or_letter": "/absolute/path/to/file.ext", ... }
     """
     dataset = {}
     if not ARCHIVE_DIR.exists():
-        print(f"[dataset_loader] ERROR: archive folder not found at {ARCHIVE_DIR}")
-        return dataset
+        # Fallback to a folder named 'isl_dataset' in the current working directory
+        ARCHIVE_DIR_FALLBACK = Path("isl_dataset")
+        if ARCHIVE_DIR_FALLBACK.exists():
+            search_dir = ARCHIVE_DIR_FALLBACK
+        else:
+            print(f"[dataset_loader] ERROR: dataset folder not found at {ARCHIVE_DIR}")
+            return dataset
+    else:
+        search_dir = ARCHIVE_DIR
 
-    for img_path in sorted(ARCHIVE_DIR.rglob("*")):
-        if img_path.suffix.lower() in SUPPORTED_EXTS:
-            stem_key = img_path.stem.lower().strip()
-            parent_key = img_path.parent.name.lower().strip()
-
-            # If filename is a number (e.g., '1.jpg' inside 'A/'), use the folder name instead.
-            if stem_key.isnumeric() and parent_key not in ('archive', 'indian'):
-                key = parent_key
+    # Scan for files
+    for file_path in sorted(search_dir.rglob("*")):
+        if file_path.suffix.lower() in SUPPORTED_EXTS:
+            stem_key = file_path.stem.lower().strip()
+            # If filename contains index (e.g. 'hello_1'), take the word part
+            if "_" in stem_key:
+                key = stem_key.split("_")[0]
             else:
                 key = stem_key
+            
+            # Prioritise videos over images if both exist
+            is_video = file_path.suffix.lower() == ".mp4"
+            if key not in dataset or is_video:
+                dataset[key] = str(file_path.absolute())
 
-            if key and key not in dataset:
-                dataset[key] = str(img_path)
-
-    print(f"[dataset_loader] Loaded {len(dataset)} ISL signs from {ARCHIVE_DIR}")
+    print(f"[dataset_loader] Loaded {len(dataset)} ISL signs from {search_dir}")
     return dataset
 
 # Pre-load once at import time so all modules share the same dict

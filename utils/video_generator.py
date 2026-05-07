@@ -43,32 +43,47 @@ def generate_isl_video(mapped: list[tuple[str, str]], speed: float = 1.0) -> str
         frames_per_sign = max(1, int(FPS * _secs_per_sign(speed)))
         blank = np.ones((TARGET_H, TARGET_W, 3), dtype=np.uint8) * 30  # dark grey blank
 
-        for token, img_path in mapped:
-            if not os.path.exists(img_path):
-                print(f"[video_generator] SKIP (not found): {img_path}")
+        for token, file_path in mapped:
+            if not os.path.exists(file_path):
+                print(f"[video_generator] SKIP (not found): {file_path}")
                 continue
 
-            img = cv2.imread(img_path)
-            if img is None:
-                print(f"[video_generator] SKIP (unreadable): {img_path}")
-                continue
+            ext = Path(file_path).suffix.lower()
 
-            # Resize to target keeping aspect ratio, pad with blank background
-            frame = _fit_image(img, TARGET_W, TARGET_H)
+            # ── Case A: Image file ────────────────────────────────────────────
+            if ext in [".jpg", ".jpeg", ".png", ".bmp", ".webp"]:
+                img = cv2.imread(file_path)
+                if img is None:
+                    print(f"[video_generator] SKIP (unreadable image): {file_path}")
+                    continue
+                frame = _fit_image(img, TARGET_W, TARGET_H)
+                
+                # Add text label
+                cv2.putText(frame, token.upper(), (20, TARGET_H - 20),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+                
+                for _ in range(frames_per_sign):
+                    writer.write(frame)
 
-            # Add text label at bottom
-            cv2.putText(
-                frame, token.upper(),
-                (20, TARGET_H - 20),
-                cv2.FONT_HERSHEY_SIMPLEX, 1.0,
-                (255, 255, 255), 2, cv2.LINE_AA
-            )
+            # ── Case B: Video file (clip) ─────────────────────────────────────
+            elif ext == ".mp4":
+                cap = cv2.VideoCapture(file_path)
+                if not cap.isOpened():
+                    print(f"[video_generator] SKIP (unreadable video): {file_path}")
+                    continue
+                
+                while True:
+                    ret, img = cap.read()
+                    if not ret: break
+                    
+                    frame = _fit_image(img, TARGET_W, TARGET_H)
+                    cv2.putText(frame, token.upper(), (20, TARGET_H - 20),
+                                cv2.FONT_HERSHEY_SIMPLEX, 1.0, (255, 255, 255), 2, cv2.LINE_AA)
+                    writer.write(frame)
+                cap.release()
 
-            for _ in range(frames_per_sign):
-                writer.write(frame)
-
-            # Brief blank transition between signs (0.15s)
-            for _ in range(max(1, int(FPS * 0.15))):
+            # Brief blank transition between signs (0.1s)
+            for _ in range(max(1, int(FPS * 0.1))):
                 writer.write(blank)
 
         writer.release()
