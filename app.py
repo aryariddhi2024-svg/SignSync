@@ -55,12 +55,13 @@ input, textarea, select, [role="textbox"], div[role="combobox"], .stTextInput>di
 }
 
 .brand-box {
-    background: linear-gradient(135deg,#7c6af7,#a78bfa);
+    background: #000000;
+    border: 1px solid rgba(255,255,255,0.1);
     border-radius:12px; padding:16px 20px; margin-bottom:20px;
-    box-shadow: 0 0 30px rgba(124,106,247,0.35);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
 }
-.brand-title { font-size:22px; font-weight:700; color:white; margin:0; }
-.brand-sub   { font-size:11px; color:rgba(255,255,255,0.7); margin:0; letter-spacing:1px; }
+.brand-title { font-size:22px; font-weight:700; color:#ffffff; margin:0; }
+.brand-sub   { font-size:11px; color:#8891a8; margin:0; letter-spacing:1px; }
 
 .step-card {
     background:#1a1f2e; border:1px solid rgba(255,255,255,0.07);
@@ -95,16 +96,16 @@ input, textarea, select, [role="textbox"], div[role="combobox"], .stTextInput>di
 }
 
 div[data-testid="stButton"] > button {
-    background: #7c6af7; color:white; border:none;
+    background: #ffffff; color: #000000 !important; border: 1px solid #000000;
     border-radius:8px; font-weight:600; font-family:'Space Grotesk',sans-serif;
     transition: all .2s;
 }
-div[data-testid="stButton"] > button:hover { filter:brightness(1.15); }
+div[data-testid="stButton"] > button:hover { background: #e0e0e0; border-color: #000000; }
 
 [data-testid="stFileUploader"] div[role="button"] {
-    background: #000000 !important;
-    color: #ffffff !important;
-    border: 1px solid #333333 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #000000 !important;
 }
 
 [data-testid="stFileUploader"] label {
